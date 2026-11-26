@@ -1,0 +1,787 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="What Waggle is, why it is being built, how it works and what makes it different from a chatbot.">
+<meta property="og:title" content="What Is Waggle?">
+<meta property="og:description" content="What Waggle is, why it is being built, how it works and what makes it different from a chatbot.">
+<meta name="theme-color" content="#0c0406">
+<style>body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>What Is Waggle?</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;800&family=Hanken+Grotesk:wght@400;500;700&family=Share+Tech+Mono&display=swap">
+<style>
+/* Layout: full-screen scenes over a living honeycomb. One world, dark by choice (Waggle's own HUD).
+   Ember = Waggle, cyan = Claude, honey = something worth telling. */
+:root{
+  --ink:#0c0406; --ink-2:#170809; --cell:#1b0a0c;
+  --ember:#ff4a26; --ember-2:#ff7a4d; --honey:#ffb42e; --cyan:#4fd8ff; --ok:#4cf0a8;
+  --bone:#f6eae4; --dim:#bd968d; --faint:#8a645c; --line:rgba(255,96,56,.24);
+  --display:"Unbounded","Arial Black",system-ui,sans-serif;
+  --body:"Hanken Grotesk","Segoe UI",system-ui,sans-serif;
+  --hud:"Share Tech Mono",Consolas,ui-monospace,monospace;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{font-size:100%;overflow-x:clip;background:var(--ink)}
+body{margin:0;background:
+    radial-gradient(120% 80% at 50% -10%,rgba(255,74,38,.13),transparent 60%),
+    radial-gradient(90% 60% at 100% 100%,rgba(79,216,255,.05),transparent 60%),var(--ink);
+  background-attachment:fixed;color:var(--bone);font-family:var(--body);font-size:clamp(16px,.5vw + 13px,19px);line-height:1.6;overflow-x:clip;-webkit-font-smoothing:antialiased}
+h1,h2,h3,p,ul{margin:0}
+ul{padding:0;list-style:none}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--honey);outline-offset:3px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+
+#hive{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+main{position:relative;z-index:1}
+.bar{position:fixed;left:0;right:0;top:env(safe-area-inset-top,0px);height:3px;z-index:30;background:rgba(255,96,56,.08)}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--ember),var(--honey));box-shadow:0 0 14px var(--ember)}
+.dots{position:fixed;right:max(14px,env(safe-area-inset-right,0px));top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:11px;z-index:30}
+.dots button{position:relative;width:12px;height:13px;padding:0;border:0;background:var(--faint);clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);transition:background .3s,scale .3s}
+.dots button:hover,.dots button:focus-visible{background:var(--bone);scale:1.3}
+.dots button[aria-current=true]{background:var(--ember);scale:1.45}
+.present{position:fixed;top:calc(env(safe-area-inset-top,0px) + 14px);right:max(14px,env(safe-area-inset-right,0px));z-index:30;font-family:var(--hud);font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);background:rgba(12,4,6,.6);border:1px solid var(--line);border-radius:3px;padding:7px 12px;backdrop-filter:blur(6px);transition:color .2s,border-color .2s}
+.present:hover{color:var(--bone);border-color:var(--ember)}
+.tools{position:fixed;top:calc(env(safe-area-inset-top,0px) + 14px);right:max(14px,env(safe-area-inset-right,0px));z-index:30;display:flex;gap:8px}
+.tools .present{position:static}
+@media (max-width:760px){.dots{display:none}.tools{position:absolute}}
+
+.scene{position:relative;min-height:100svh;display:grid;align-items:center;padding-block:clamp(76px,11vh,130px)}
+.wrap{width:100%;max-width:1140px;margin-inline:auto;padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px))}
+@media (min-width:761px){.wrap{padding-right:max(44px,env(safe-area-inset-right,0px))}}
+.split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(28px,5vw,84px);align-items:center}
+@media (max-width:880px){.split{grid-template-columns:minmax(0,1fr)}}
+.stack{display:flex;flex-direction:column;gap:clamp(16px,2.2vh,26px);min-width:0}
+.eyebrow{font-family:var(--hud);font-size:.78rem;letter-spacing:.2em;text-transform:uppercase;color:var(--ember-2);display:flex;align-items:center;gap:10px}
+.eyebrow::before{content:"";width:9px;height:10px;background:var(--ember);clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);flex:none}
+h2{font-family:var(--display);font-weight:600;font-size:clamp(1.55rem,3.3vw,2.85rem);line-height:1.1;letter-spacing:-.025em;text-wrap:balance}
+h2 em,.lede em{font-style:normal;color:var(--ember)}
+h3{font-family:var(--display);font-weight:600;font-size:1.02rem;letter-spacing:-.01em;line-height:1.25}
+.say{max-width:34em;color:rgba(246,234,228,.86)}
+.say strong{color:var(--bone);font-weight:700}
+.note{font-family:var(--hud);font-size:.74rem;letter-spacing:.06em;color:var(--dim);line-height:1.5}
+.hud{position:relative;border:1px solid var(--line);border-radius:3px;background:linear-gradient(180deg,rgba(44,14,15,.74),rgba(20,7,9,.8));backdrop-filter:blur(7px)}
+.hud::before,.hud::after{content:"";position:absolute;width:14px;height:14px;border:2px solid var(--ember);pointer-events:none}
+.hud::before{top:-1px;left:-1px;border-right:0;border-bottom:0}
+.hud::after{bottom:-1px;right:-1px;border-left:0;border-top:0}
+
+/* reveal: hidden only when the script is running, so the page is whole without it */
+.js .rv{opacity:0;transform:translateY(26px);filter:blur(8px)}
+.js .in .rv{opacity:1;transform:none;filter:none;transition:opacity .9s cubic-bezier(.2,.7,.2,1),transform .9s cubic-bezier(.2,.7,.2,1),filter .9s;transition-delay:calc(var(--i,0)*85ms)}
+
+/* 1 hero */
+.hero{text-align:center;overflow:hidden}
+.hero canvas,.end canvas{position:absolute;inset:0;width:100%;height:100%}
+.hero .wrap{position:relative;display:flex;flex-direction:column;align-items:center;gap:clamp(14px,2.4vh,26px)}
+.hero .eyebrow{justify-content:center;flex-wrap:wrap}
+.mark{font-family:var(--display);font-weight:800;font-size:min(13.4vw,10.8rem);line-height:.92;letter-spacing:-.045em;perspective:900px;text-shadow:0 0 60px rgba(255,74,38,.45)}
+.mark span{display:inline-block;animation:rise 1.15s cubic-bezier(.2,.85,.2,1) both;animation-delay:calc(var(--n)*75ms + .15s)}
+@keyframes rise{from{opacity:0;transform:translateY(55%) rotateX(-75deg);filter:blur(14px)}to{opacity:1;transform:none;filter:none}}
+.lede{font-size:clamp(1.1rem,2.1vw,1.6rem);line-height:1.35;max-width:24em;text-wrap:balance}
+.cue{margin-top:clamp(8px,3vh,34px);font-family:var(--hud);font-size:.76rem;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);background:none;border:0;display:flex;align-items:center;gap:10px}
+.cue kbd{font:inherit;border:1px solid var(--line);border-radius:3px;padding:2px 8px;color:var(--bone)}
+.cue::after{content:"";width:1px;height:34px;background:linear-gradient(var(--ember),transparent);animation:drip 1.8s ease-in-out infinite}
+@keyframes drip{0%{transform:scaleY(0);transform-origin:top}50%{transform:scaleY(1);transform-origin:top}51%{transform-origin:bottom}100%{transform:scaleY(0);transform-origin:bottom}}
+
+/* 2 the name */
+.dance{position:relative;aspect-ratio:1;max-width:min(100%,470px);width:100%;margin-inline:auto}
+.dance canvas{position:absolute;inset:0;width:100%;height:100%}
+.legend{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 22px;margin-top:10px}
+.legend span{display:flex;align-items:center;gap:8px}
+.legend i{width:22px;height:2px;background:var(--honey);flex:none}
+.legend i.d{background:repeating-linear-gradient(90deg,var(--bone) 0 4px,transparent 4px 9px);opacity:.5}
+
+/* 3 why */
+.idle{padding:18px;display:flex;flex-direction:column;gap:14px}
+.idle-top{display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-family:var(--hud);font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.idle-top b{font-family:var(--display);font-weight:600;font-size:1.25rem;color:var(--bone);letter-spacing:0;font-variant-numeric:tabular-nums}
+.idle-box{border:1px solid rgba(246,234,228,.14);border-radius:12px;padding:14px 16px;color:var(--faint);display:flex;align-items:center;gap:4px;background:rgba(0,0,0,.25)}
+.idle-box::after{content:"";width:2px;height:1.15em;background:var(--bone);animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.missed{display:flex;flex-direction:column;gap:8px}
+.missed li{display:grid;grid-template-columns:5.6em minmax(0,1fr) auto;gap:10px;align-items:center;padding:9px 12px;border-left:2px solid var(--honey);background:rgba(255,180,46,.07);font-size:.92rem;transition:opacity .6s,transform .6s cubic-bezier(.2,.8,.2,1),border-color .6s,background .6s}
+.missed time{font-family:var(--hud);font-size:.74rem;color:var(--honey);transition:color .6s}
+.missed em{font-style:normal;font-family:var(--hud);font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--ember);transition:opacity .4s}
+.js .missed li.wait{opacity:0;transform:translateX(-18px)}
+.js .missed li.live{color:var(--bone)}
+.js .missed li.live em{opacity:0}
+.missed li.gone{border-color:var(--faint);background:rgba(255,255,255,.02);color:var(--faint)}
+.missed li.gone time{color:var(--faint)}
+.reasons{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(18px,3vw,40px);margin-top:clamp(30px,6vh,64px);padding-top:clamp(22px,4vh,40px);border-top:1px solid var(--line)}
+.reasons li{display:flex;flex-direction:column;gap:8px}
+.reasons p{font-size:.95rem;color:var(--dim)}
+@media (max-width:760px){.reasons{grid-template-columns:minmax(0,1fr)}}
+
+/* 4 body + brain */
+.comb{--w:clamp(96px,23vw,150px);--h:calc(var(--w)*.866);position:relative;width:calc(var(--w)*2.6);height:calc(var(--h)*3.12);margin-inline:auto}
+.cellb{position:absolute;left:50%;top:50%;width:var(--w);height:var(--h);margin:calc(var(--h)/-2) 0 0 calc(var(--w)/-2);translate:calc(var(--x)*var(--w)*.78) calc(var(--y)*var(--h)*1.04);clip-path:polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%);border:0;padding:0;background:var(--line);display:grid;place-items:center;transition:scale .35s cubic-bezier(.2,.9,.3,1.3),background .3s}
+.cellb::before{content:"";position:absolute;inset:1.5px;clip-path:inherit;background:var(--cell);transition:background .3s}
+.cellb span{position:relative;display:flex;flex-direction:column;align-items:center;gap:5px;font-family:var(--hud);font-size:clamp(.62rem,1.5vw,.8rem);letter-spacing:.14em;text-transform:uppercase;color:var(--dim);transition:color .3s}
+.cellb svg{width:clamp(20px,4.6vw,28px);height:clamp(20px,4.6vw,28px);fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.cellb:hover{scale:1.05}
+.cellb:hover span,.cellb:focus-visible span{color:var(--bone)}
+.cellb:focus-visible{background:var(--honey)}
+.cellb[aria-pressed=true]{background:var(--ember);scale:1.07;z-index:2}
+.cellb[aria-pressed=true]::before{background:linear-gradient(160deg,#4a140c,#230a0b)}
+.cellb[aria-pressed=true] span{color:var(--bone)}
+.cellb.brain{background:rgba(79,216,255,.55)}
+.cellb.brain span{color:var(--cyan)}
+.cellb.brain[aria-pressed=true]{background:var(--cyan)}
+.cellb.brain[aria-pressed=true]::before{background:linear-gradient(160deg,#0b3340,#0a1a22)}
+.part{padding:20px 22px;display:flex;flex-direction:column;gap:10px;min-height:11.5em}
+.part.sw>*{animation:sw .5s cubic-bezier(.2,.8,.2,1) both}
+.part.sw>*:nth-child(2){animation-delay:.06s}.part.sw>*:nth-child(3){animation-delay:.12s}
+@keyframes sw{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.part h3{font-size:1.15rem}
+.part h3 small{font-family:var(--hud);font-size:.7rem;letter-spacing:.16em;color:var(--ember-2);font-weight:400;margin-left:8px;text-transform:uppercase}
+.part.is-brain h3 small{color:var(--cyan)}
+
+/* 6 different */
+.vs{display:flex;flex-direction:column;margin-top:clamp(20px,4vh,40px)}
+.vs li{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:clamp(14px,3vw,40px);align-items:baseline;padding:clamp(11px,1.7vh,17px) 0;border-top:1px solid rgba(255,96,56,.16)}
+.vs li.head{border:0;font-family:var(--hud);font-size:.74rem;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);padding-bottom:6px}
+.vs li.head span:last-child{color:var(--ember-2)}
+.vs .old{color:var(--faint);text-decoration:line-through;text-decoration-color:rgba(138,100,92,.55)}
+.vs .new{font-family:var(--display);font-weight:400;font-size:clamp(.95rem,1.7vw,1.22rem);line-height:1.3;letter-spacing:-.015em}
+.vs .new b{font-weight:600;color:var(--ember)}
+@media (max-width:640px){.vs li{grid-template-columns:minmax(0,1fr);gap:3px}.vs li.head span:first-child{display:none}}
+
+/* 7 judgement */
+.fun{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:stretch;gap:8px;padding:16px 14px}
+.fun ul{display:flex;flex-direction:column;justify-content:space-around;font-family:var(--hud);font-size:clamp(.6rem,1.5vw,.74rem);letter-spacing:.1em;text-transform:uppercase;color:var(--dim);text-align:right}
+.fun .mid{position:relative;height:clamp(210px,34vh,300px);min-width:0}
+.fun canvas{position:absolute;inset:0;width:100%;height:100%}
+.fun .q{position:absolute;left:66%;top:calc(50% + 30px);transform:translateX(-50%);font-family:var(--hud);font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:var(--ember-2);white-space:nowrap}
+.fun .me{display:flex;align-items:center;font-family:var(--hud);font-size:clamp(.6rem,1.5vw,.74rem);letter-spacing:.1em;text-transform:uppercase;color:var(--honey)}
+.tally{display:flex;gap:26px;justify-content:center;margin-top:12px;font-family:var(--hud);font-size:.8rem;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.tally b{color:var(--bone);font-variant-numeric:tabular-nums}
+.tally span:last-child b{color:var(--honey)}
+.facts{display:flex;flex-direction:column;gap:9px}
+.facts li{display:grid;grid-template-columns:minmax(4.6em,auto) minmax(0,1fr);gap:14px;align-items:baseline;font-size:.95rem;color:var(--dim)}
+.facts b{font-family:var(--display);font-weight:600;color:var(--bone);font-size:1.05rem;white-space:nowrap}
+
+/* 8 guard */
+.acts{display:flex;flex-wrap:wrap;gap:8px}
+.acts button{background:none;border:1px solid var(--line);border-radius:3px;padding:8px 12px;font-size:.9rem;transition:border-color .2s,background .2s,color .2s;color:var(--dim)}
+.acts button:hover{border-color:var(--bone);color:var(--bone)}
+.acts button[aria-pressed=true]{border-color:var(--ember);background:rgba(255,74,38,.16);color:var(--bone)}
+.gate{--v:var(--ok);padding:22px;display:flex;flex-direction:column;gap:16px}
+.gate[data-v=ask]{--v:var(--honey)}.gate[data-v=never]{--v:var(--ember)}
+.flow{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(16px,.6fr) auto minmax(16px,.6fr) minmax(0,1.3fr);align-items:center;gap:10px}
+.want small{display:block;font-family:var(--hud);font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.want b{font-family:var(--display);font-weight:600;font-size:.98rem;line-height:1.25;display:block}
+.pipe{position:relative;height:2px;background:rgba(246,234,228,.14)}
+.pipe i{position:absolute;top:-4px;left:0;width:10px;height:10px;border-radius:50%;background:var(--bone);opacity:0}
+.gate.go .pipe.a i{animation:run .55s cubic-bezier(.5,0,.6,1) both}
+.gate.done[data-v=ok] .pipe.b{background:var(--ok)}
+.gate.done[data-v=ok] .pipe.b i{background:var(--ok);animation:run .5s cubic-bezier(.4,0,.2,1) both}
+@keyframes run{0%{left:0;opacity:1}90%{opacity:1}100%{left:calc(100% - 10px);opacity:0}}
+.shield{width:50px;height:56px;display:grid;place-items:center}
+.shield svg{width:100%;height:100%;fill:rgba(255,255,255,.03);stroke:var(--faint);stroke-width:2;stroke-linejoin:round;transition:stroke .3s,fill .3s,filter .3s}
+.gate.done .shield svg{stroke:var(--v);fill:color-mix(in srgb,var(--v) 16%,transparent);filter:drop-shadow(0 0 12px var(--v))}
+.gate.done .shield{animation:thump .45s cubic-bezier(.2,.9,.3,1.4)}
+@keyframes thump{40%{scale:1.2}}
+.res{font-family:var(--display);font-weight:600;font-size:.98rem;color:var(--v);opacity:0;transform:translateX(-8px);transition:opacity .35s,transform .35s}
+.gate.done .res{opacity:1;transform:none}
+.why{min-height:4.6em;color:rgba(246,234,228,.86);opacity:0;transition:opacity .4s}
+.gate.done .why{opacity:1}
+.codebox{display:flex;flex-wrap:wrap;align-items:center;gap:10px;font-family:var(--hud);font-size:.82rem;color:var(--dim)}
+.codebox code{font-family:var(--hud);font-size:1rem;color:var(--honey);border:1px dashed var(--honey);padding:3px 9px;border-radius:3px;letter-spacing:.14em}
+.codebox button{font-family:var(--hud);font-size:.76rem;letter-spacing:.1em;text-transform:uppercase;border:1px solid var(--line);border-radius:3px;background:none;padding:7px 12px}
+.codebox button:hover{border-color:var(--bone)}
+.codebox button.y{border-color:var(--ok);color:var(--ok)}
+@media (max-width:560px){.flow{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)}.want,.res{grid-column:1/-1}.res{text-align:center}}
+
+/* 8 how a message travels */
+.rail{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));margin-top:clamp(20px,4vh,40px)}
+.rail button{position:relative;background:none;border:0;padding:0 2px;display:flex;flex-direction:column;align-items:center;gap:9px;font-family:var(--hud);font-size:clamp(.58rem,1.05vw,.76rem);letter-spacing:.1em;text-transform:uppercase;color:var(--faint);transition:color .3s}
+.rail button::before{content:"";position:absolute;top:22px;left:50%;width:100%;height:2px;background:linear-gradient(90deg,var(--ember),var(--honey)) no-repeat 0 0/0% 100%,rgba(246,234,228,.12);transition:background-size .55s cubic-bezier(.3,.7,.2,1)}
+.rail button:last-child::before{display:none}
+.rail button.done::before{background-size:100% 100%,auto}
+.rail i{position:relative;z-index:1;width:42px;height:46px;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);background:var(--line);display:grid;place-items:center;font-style:normal;font-family:var(--display);font-weight:600;font-size:.8rem;color:var(--dim);transition:background .3s,scale .35s cubic-bezier(.2,.9,.3,1.4),color .3s}
+.rail i::before{content:"";position:absolute;inset:1.5px;clip-path:inherit;background:var(--cell);z-index:-1;transition:background .3s}
+.rail button.done i{background:var(--ember-2);color:var(--bone)}
+.rail button.done i::before{background:#3a120c}
+.rail button[aria-pressed=true]{color:var(--bone)}
+.rail button[aria-pressed=true] i{background:var(--honey);color:var(--bone);scale:1.18}
+.rail button[aria-pressed=true] i::before{background:linear-gradient(160deg,#5a1a0c,#2a0c0b)}
+.rail button:hover,.rail button:focus-visible{color:var(--bone)}
+.rail button:focus-visible i{background:var(--bone)}
+@media (max-width:700px){.rail button span{display:none}.rail i{width:30px;height:33px;font-size:.66rem}.rail button::before{top:16px}}
+.stage{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,auto);gap:clamp(16px,4vw,48px);align-items:center;padding:22px 24px;margin-top:22px;min-height:10.5em}
+.stage.sw>*{animation:sw .5s cubic-bezier(.2,.8,.2,1) both}
+.stage.sw>*:nth-child(2){animation-delay:.1s}
+.stage .txt{display:flex;flex-direction:column;gap:9px;min-width:0}
+.stage h3{font-size:1.16rem}
+.stage h3 small{font-family:var(--hud);font-size:.7rem;letter-spacing:.16em;color:var(--ember-2);font-weight:400;margin-left:8px;text-transform:uppercase}
+.stage .met{text-align:right;display:flex;flex-direction:column;gap:4px;max-width:13em}
+.stage .met b{font-family:var(--display);font-weight:600;font-size:clamp(1.3rem,3.2vw,2.3rem);line-height:1;letter-spacing:-.03em;color:var(--honey);white-space:nowrap}
+.stage .met span{font-family:var(--hud);font-size:.72rem;letter-spacing:.06em;color:var(--dim);line-height:1.4}
+@media (max-width:640px){.stage{grid-template-columns:minmax(0,1fr)}.stage .met{text-align:left;max-width:none}}
+.under{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:clamp(16px,2.6vw,34px);margin-top:clamp(22px,4vh,38px)}
+.under li{border-top:1px solid var(--line);padding-top:12px;display:flex;flex-direction:column;gap:6px}
+.under h3{font-family:var(--hud);font-weight:400;font-size:.74rem;letter-spacing:.16em;text-transform:uppercase;color:var(--ember-2)}
+.under p{font-size:.9rem;color:var(--dim);line-height:1.45}
+@media (max-width:860px){.under{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* 9 the stack */
+.stackg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(22px,4vh,40px) clamp(20px,3.4vw,48px);margin-top:clamp(22px,4vh,44px)}
+@media (max-width:900px){.stackg{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:600px){.stackg{grid-template-columns:minmax(0,1fr)}}
+.stackg>div{border-top:1px solid var(--line);padding-top:13px;display:flex;flex-direction:column;gap:11px;min-width:0}
+.stackg h3{font-family:var(--hud);font-weight:400;font-size:.76rem;letter-spacing:.18em;text-transform:uppercase;color:var(--ember-2)}
+.stackg ul{display:flex;flex-direction:column;gap:9px}
+.stackg li{display:flex;flex-direction:column;gap:1px}
+.stackg b{font-family:var(--display);font-weight:400;font-size:.92rem;letter-spacing:-.01em;line-height:1.3}
+.stackg span{font-size:.84rem;color:var(--dim);line-height:1.4}
+.stackg code,.stage code{font-family:var(--hud);font-size:.92em;color:var(--cyan)}
+
+/* 10 the bill */
+.big{font-family:var(--display);font-weight:800;font-size:clamp(3.4rem,11vw,8rem);line-height:.92;letter-spacing:-.05em;font-variant-numeric:tabular-nums;text-shadow:0 0 60px rgba(79,216,255,.35)}
+.bars{display:flex;flex-direction:column;gap:13px}
+.bars li{display:grid;grid-template-columns:minmax(6.4em,auto) minmax(0,1fr) 4.4em;gap:12px;align-items:center;font-size:.92rem}
+.bars .t{height:10px;background:rgba(246,234,228,.08)}
+.bars .t i{display:block;height:100%;min-width:2px;width:calc(var(--p)*1%);background:linear-gradient(90deg,rgba(79,216,255,.45),var(--cyan));transform-origin:left}
+.js .bars .t i{transform:scaleX(0)}
+.js .in .bars .t i{transform:scaleX(1);transition:transform 1.2s cubic-bezier(.2,.8,.2,1) calc(.5s + var(--k)*.13s)}
+.bars b{font-family:var(--hud);font-weight:400;text-align:right;font-variant-numeric:tabular-nums;color:var(--bone)}
+.billside{display:flex;flex-direction:column;gap:clamp(18px,3vh,28px);min-width:0}
+.still.js .bars .t i{transform:none}
+
+/* 12 end */
+.end{text-align:center;overflow:hidden}
+.end .wrap{position:relative;display:flex;flex-direction:column;align-items:center;gap:clamp(16px,2.6vh,28px)}
+.end h2{font-size:clamp(1.8rem,5vw,4rem);max-width:15em}
+.next{display:flex;flex-wrap:wrap;justify-content:center;gap:10px 14px;font-family:var(--hud);font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.next li{border:1px solid var(--line);border-radius:3px;padding:7px 12px;background:rgba(12,4,6,.55)}
+.end a{color:var(--bone);text-decoration-color:var(--ember);text-underline-offset:4px}
+
+.still *,.still *::before,.still *::after{animation:none!important;transition:none!important}
+.still.js .rv,.still.js .grid4 .l{opacity:1;transform:none;filter:none;scale:1}
+</style>
+
+<canvas id="hive" aria-hidden="true"></canvas>
+<div class="bar" aria-hidden="true"><i id="bar"></i></div>
+<nav class="dots" id="dots" aria-label="Scenes"></nav>
+<div class="tools"><button class="present" id="motion" type="button">Motion on</button><button class="present" id="present" type="button">Present</button></div>
+
+<main>
+
+<section class="scene hero" data-name="Waggle">
+  <canvas id="orb1" aria-hidden="true"></canvas>
+  <div class="wrap">
+    <p class="eyebrow rv">A personal AI assistant · running on one PC · since 17 Nov 2026</p>
+    <h1 class="mark" aria-label="Waggle"><span style="--n:0">W</span><span style="--n:1">A</span><span style="--n:2">G</span><span style="--n:3">G</span><span style="--n:4">L</span><span style="--n:5">E</span></h1>
+    <p class="lede rv">An assistant that lives on my PC, knows me, and <em>speaks first</em>.</p>
+    <button class="cue rv" type="button" id="cue">Scroll, or press <kbd>→</kbd></button>
+  </div>
+</section>
+
+<section class="scene" data-name="The name">
+  <div class="wrap split">
+    <div class="stack">
+      <p class="eyebrow rv">The name</p>
+      <h2 class="rv">A bee that finds something good <em>doesn’t keep it to itself.</em></h2>
+      <p class="say rv">She flies home and dances. The angle of the dance tells the hive which way to go. How long it lasts tells them how far. Biologists call it the waggle dance.</p>
+      <p class="say rv"><strong>That is the whole idea of Waggle.</strong> Go out, find what matters, come back and tell me.</p>
+    </div>
+    <div class="rv">
+      <div class="dance"><canvas id="dance" role="img" aria-label="A bee tracing the figure-eight waggle dance"></canvas></div>
+      <p class="legend note"><span><i></i>angle of the run = which way</span><span><i class="d"></i>straight up = toward the sun</span></p>
+    </div>
+  </div>
+</section>
+
+<section class="scene" data-name="Why">
+  <div class="wrap">
+    <div class="split">
+      <div class="stack">
+        <p class="eyebrow rv">Why we’re building it</p>
+        <h2 class="rv">Every AI I’ve used has the same flaw. <em>It waits.</em></h2>
+        <p class="say rv">It only knows what I type into it. It forgets me when the window closes. It never notices the deadline, the broken build or the one email that mattered.</p>
+        <p class="say rv"><strong>So we’re building the one I actually wanted:</strong> an assistant that behaves like someone who has worked with me for years.</p>
+      </div>
+      <div class="idle hud rv" id="idle">
+        <div class="idle-top"><span>Any chatbot, all day</span><b id="iclock">8:00 AM</b></div>
+        <div class="idle-box">How can I help you today?</div>
+        <p class="note">Meanwhile, with nobody asking:</p>
+        <ul class="missed" id="missed">
+          <li><time>8:40 AM</time><span>A scholarship form is due Friday</span><em>missed</em></li>
+          <li><time>11:15 AM</time><span>The build broke on main</span><em>missed</em></li>
+          <li><time>3:30 PM</time><span>Practice moved to 6:30</span><em>missed</em></li>
+          <li><time>7:05 PM</time><span>A teacher answered my email</span><em>missed</em></li>
+        </ul>
+      </div>
+    </div>
+    <ul class="reasons">
+      <li class="rv"><h3>Help should show up.</h3><p>The useful moment is usually before I think to ask.</p></li>
+      <li class="rv"><h3>My life should stay mine.</h3><p>What Waggle knows about me is plain notes in a folder on my own PC. I can read, edit or delete any of it.</p></li>
+      <li class="rv"><h3>Building it is the education.</h3><p>Reliability, safety, testing and honest measurement are what real engineering is made of.</p></li>
+    </ul>
+  </div>
+</section>
+
+<section class="scene" data-name="What it is">
+  <div class="wrap split">
+    <div class="stack">
+      <p class="eyebrow rv">What it is</p>
+      <h2 class="rv">Waggle is the body. <em>Claude is the brain.</em></h2>
+      <p class="say rv">Claude is one of the most capable AI models in the world, but it lives in a chat window. Waggle gives it ears, a voice, a clock, a memory, hands and a conscience, all running on my own PC.</p>
+      <div class="part hud rv" id="part" aria-live="polite"></div>
+    </div>
+    <div class="rv">
+      <div class="comb" id="comb"></div>
+      <p class="note" style="text-align:center;margin-top:14px">Tap a cell</p>
+    </div>
+  </div>
+</section>
+
+<section class="scene" data-name="Different">
+  <div class="wrap">
+    <p class="eyebrow rv">What makes it different</p>
+    <h2 class="rv" style="margin-top:14px">Same brain as a chatbot. <em>Completely different job.</em></h2>
+    <ul class="vs">
+      <li class="head rv"><span>A chatbot</span><span>Waggle</span></li>
+      <li class="rv"><span class="old">Waits for a question</span><span class="new"><b>Speaks first</b> when something is worth it</span></li>
+      <li class="rv"><span class="old">Forgets me when the tab closes</span><span class="new">Keeps <b>notes about me</b> that I can open and edit</span></li>
+      <li class="rv"><span class="old">Lives on a company’s server</span><span class="new">Lives <b>on my PC</b>; it hears and speaks without the cloud</span></li>
+      <li class="rv"><span class="old">Stops when I stop typing</span><span class="new">Works a <b>night shift</b> and reports at 7:30</span></li>
+      <li class="rv"><span class="old">Says “Done!” and I have to trust it</span><span class="new"><b>Shows proof:</b> tests, records, a daily self-check</span></li>
+      <li class="rv"><span class="old">Does whatever it is told</span><span class="new"><b>Asks first</b> about money, messages and deletes</span></li>
+    </ul>
+  </div>
+</section>
+
+<section class="scene" data-name="Judgement">
+  <div class="wrap split">
+    <div class="stack">
+      <p class="eyebrow rv">Different, part one</p>
+      <h2 class="rv">It speaks first, and <em>it knows when not to.</em></h2>
+      <p class="say rv">Three times a day Waggle looks at the whole picture: my notes, my projects, my mail, the weather, today’s date, what it already told me and how I reacted. Then it asks itself one question. Is anything here worth interrupting me for?</p>
+      <p class="say rv"><strong>Usually the answer is no.</strong> That restraint is the feature.</p>
+      <ul class="facts rv">
+        <li><b>8 a day</b><span>the most it may message me unprompted, and never in quiet hours</span></li>
+        <li><b>21 of 22</b><span>on an exam of situations nobody had written a rule for</span></li>
+        <li><b>73%</b><span>of its unprompted messages I marked welcome in the first measured week</span></li>
+      </ul>
+    </div>
+    <div class="rv">
+      <div class="fun hud">
+        <ul aria-hidden="true"><li>mail</li><li>projects</li><li>notes</li><li>weather</li><li>the date</li><li>my day</li></ul>
+        <div class="mid"><canvas id="funnel" role="img" aria-label="Many signals flow in; only a few pass the gate and reach my phone"></canvas><span class="q">worth it?</span></div>
+        <div class="me">→ me</div>
+      </div>
+      <p class="tally"><span>looked at <b id="fseen">0</b></span><span>said <b id="fsaid">0</b></span></p>
+    </div>
+  </div>
+</section>
+
+<section class="scene" data-name="The guard">
+  <div class="wrap split">
+    <div class="stack">
+      <p class="eyebrow rv">Different, part two</p>
+      <h2 class="rv">It can act on its own. <em>It can’t go rogue.</em></h2>
+      <p class="say rv">Every single action Waggle takes passes a checkpoint first. I didn’t want an obedient AI. I wanted one that is safe to leave alone.</p>
+      <p class="note rv">Try it. Waggle, working by itself, wants to:</p>
+      <div class="acts rv" id="acts"></div>
+    </div>
+    <div class="gate hud rv done" id="gate" data-v="ok">
+      <div class="flow">
+        <span class="want"><small>Waggle wants to</small><b id="gact"></b></span>
+        <span class="pipe a"><i></i></span>
+        <span class="shield" aria-hidden="true"><svg viewBox="0 0 48 54"><path d="M24 3 43 10v15c0 13-8 21-19 26C13 46 5 38 5 25V10z"/></svg></span>
+        <span class="pipe b"><i></i></span>
+        <span class="res" id="gres"></span>
+      </div>
+      <p class="why" id="gwhy" aria-live="polite"></p>
+      <div class="codebox" id="gcode" hidden><span>On my phone:</span><code id="gk">K7QH</code><button type="button" class="y" id="gyes">Approve once</button><button type="button" id="gno">Deny</button></div>
+    </div>
+  </div>
+</section>
+
+<section class="scene" data-name="How it's built">
+  <div class="wrap">
+    <p class="eyebrow rv">How it's built</p>
+    <h2 class="rv" style="margin-top:14px">One voice note, <em>end to end.</em></h2>
+    <div class="rail rv" id="rail"></div>
+    <div class="stage hud rv" id="stage" aria-live="polite"></div>
+    <ul class="under">
+      <li class="rv"><h3>Watchdog</h3><p>A second process checks the core every 10 seconds. Killed on purpose, it was back in 57 seconds.</p></li>
+      <li class="rv"><h3>Timers</h3><p>54 scheduled timers, each with its own catch-up rule for when the PC was switched off.</p></li>
+      <li class="rv"><h3>Jobs</h3><p>Background work holds a lease tied to process id plus start time, because Windows reuses process ids.</p></li>
+      <li class="rv"><h3>Records</h3><p>One trace per turn: who really answered, every tool call and its result, timings, outcome, code version.</p></li>
+    </ul>
+  </div>
+</section>
+
+<section class="scene" data-name="The stack">
+  <div class="wrap">
+    <p class="eyebrow rv">What it's made of</p>
+    <h2 class="rv" style="margin-top:14px">Boring parts, <em>wired carefully.</em></h2>
+    <div class="stackg">
+      <div class="rv"><h3>Core</h3><ul>
+        <li><b>Python 3.14</b><span>Waggle's own package uses the standard library only</span></li>
+        <li><b>SQLite, WAL mode</b><span>one runtime store: inbox, outbox, jobs, timers, events</span></li>
+        <li><b>Windows Task Scheduler</b><span>starts it at logon, restarts it on failure</span></li>
+        <li><b>PowerShell deploy script</b><span>one command: merge, restart everything, live canary</span></li>
+      </ul></div>
+      <div class="rv"><h3>Brains</h3><ul>
+        <li><b>Claude Code CLI</b><span>headless <code>claude -p</code> sessions, signed in, no API key</span></li>
+        <li><b>Sonnet 5.5 · Opus 5.5 · Haiku 5.5</b><span>conversation · hard jobs · routing and second opinions</span></li>
+        <li><b>Ollama on an RTX 5070, 12 GB</b><span>qwen3.6 and gemma4 for mail, summaries and chores</span></li>
+        <li><b>nomic-embed-text</b><span>embeddings for memory search</span></li>
+      </ul></div>
+      <div class="rv"><h3>Voice</h3><ul>
+        <li><b>faster-whisper</b><span>speech to text, on the PC</span></li>
+        <li><b>Kokoro</b><span>text to speech, on the PC</span></li>
+        <li><b>Silero VAD · sherpa-onnx</b><span>when I start and stop talking · the wake word</span></li>
+        <li><b>ffmpeg</b><span>audio in and out, Ogg/Opus for voice notes</span></li>
+      </ul></div>
+      <div class="rv"><h3>Channels</h3><ul>
+        <li><b>Telegram Bot API</b><span>through the Hermes Agent gateway; only my account is allowed</span></li>
+        <li><b>Gmail over IMAP</b><span>watched by rules and a local model, so it works with Claude offline</span></li>
+        <li><b>ntfy</b><span>urgent alerts to my phone</span></li>
+      </ul></div>
+      <div class="rv"><h3>Tools and memory</h3><ul>
+        <li><b>MCP</b><span>Model Context Protocol: Waggle's own tool server for Claude</span></li>
+        <li><b>GitHub CLI · Google Workspace CLI</b><span>repos and pull requests · Docs and Drive</span></li>
+        <li><b>Windows-MCP</b><span>lets it see and use the desktop</span></li>
+        <li><b>Obsidian vault + git</b><span>plain-text notes, every change undoable</span></li>
+      </ul></div>
+      <div class="rv"><h3>Quality</h3><ul>
+        <li><b>pytest</b><span>4,161 tests, some of which kill a real core mid-job</span></li>
+        <li><b>Window probe</b><span>a visible window from any child process fails a test</span></li>
+        <li><b>Replay tools</b><span>re-run my real past tool calls against a new policy before it ships</span></li>
+        <li><b>Four-column status file</b><span>built, worked, tested, reliable: never merged into one</span></li>
+      </ul></div>
+    </div>
+  </div>
+</section>
+
+<section class="scene" data-name="The bill" id="bill">
+  <div class="wrap split">
+    <div class="stack">
+      <p class="eyebrow rv">The bill</p>
+      <h2 class="rv">What this would cost <em>through the API.</em></h2>
+      <p class="big num rv" data-to="841" data-pre="$">$841</p>
+      <p class="say rv">Claude usage for Waggle at list API prices, 17 to 26 Nov 2026. <strong>I didn't pay that.</strong> Waggle was built and runs on a flat-rate Claude subscription, signed in through Claude Code, with no API key anywhere.</p>
+      <p class="note rv">Estimated from the token counts in every saved Claude Code session log on this PC, plus one deleted session recovered from an archive. Sessions deleted without a backup can't be counted, so the true figure is somewhat higher.</p>
+    </div>
+    <div class="billside">
+      <ul class="bars rv">
+        <li><span>Opus 5.5</span><span class="t"><i style="--p:100;--k:0"></i></span><b>$503</b></li>
+        <li><span>Sonnet 5.5</span><span class="t"><i style="--p:33.6;--k:1"></i></span><b>$169</b></li>
+        <li><span>Fable 5.2</span><span class="t"><i style="--p:33.5;--k:2"></i></span><b>$169</b></li>
+        <li><span>Haiku 5.5</span><span class="t"><i style="--p:0.04;--k:3"></i></span><b>$0.21</b></li>
+      </ul>
+      <ul class="facts rv">
+        <li><b>2.49 billion</b><span>tokens through the models; 98% were cached context, re-read at a fraction of the price</span></li>
+        <li><b>10.4 million</b><span>tokens the models actually wrote</span></li>
+        <li><b>≈ 10,000</b><span>model calls</span></li>
+        <li><b>$25.60</b><span>Waggle's own thinking since 19 Nov, by its own ledger: 595 calls</span></li>
+        <li><b>$1,785</b><span>everything I've built with Claude Code since July, counted the same way</span></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="scene end" data-name="What’s next">
+  <canvas id="orb2" aria-hidden="true"></canvas>
+  <div class="wrap">
+    <p class="eyebrow rv">So, what is Waggle?</p>
+    <h2 class="rv">Not another chatbot with more features. <em>An assistant that shows up.</em></h2>
+    <p class="lede rv">A body, a memory and a conscience for a very smart brain, living on one PC at home.</p>
+    <ul class="next rv"><li>Next: real nights of unattended work</li><li>Its own phone line</li><li>More of my real days</li></ul>
+    <p class="note rv">Built with Claude on one Windows PC · <a href="https://github.com/LILRINO71/waggle" target="_blank" rel="noopener">github.com/LILRINO71/waggle</a></p>
+  </div>
+</section>
+
+</main>
+
+<script>
+(()=>{
+const root=document.documentElement; root.classList.add('js');
+/* Motion is on unless the viewer switches it off here: this page was asked to move, and the PC it was built on reports "reduce". */
+let saved=null; try{saved=localStorage.getItem('waggle-motion');}catch(e){}
+const reduce=saved==='off'; if(reduce) root.classList.add('still');
+const TAU=Math.PI*2, NS='http://www.w3.org/2000/svg';
+const lerp=(a,b,t)=>a+(b-a)*t, clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const $=(s,el=document)=>el.querySelector(s), $$=(s,el=document)=>[...el.querySelectorAll(s)];
+const el=(tag,cls,txt)=>{const e=document.createElement(tag); if(cls) e.className=cls; if(txt!=null) e.textContent=txt; return e;};
+const scenes=$$('.scene'); const mods=[], sizers=[];
+let mx=-9999,my=-9999;
+addEventListener('pointermove',e=>{mx=e.clientX;my=e.clientY},{passive:true});
+addEventListener('pointerleave',()=>{mx=my=-9999});
+
+function hexPath(g,x,y,s){for(let i=0;i<6;i++){const a=i*Math.PI/3,px=x+Math.cos(a)*s,py=y+Math.sin(a)*s; i?g.lineTo(px,py):g.moveTo(px,py);} g.closePath();}
+function fit(cv){const d=Math.min(devicePixelRatio||1,2), r=cv.getBoundingClientRect(); cv.width=Math.max(1,Math.round(r.width*d)); cv.height=Math.max(1,Math.round(r.height*d)); return {w:r.width,h:r.height,d};}
+
+/* ---------- content data ---------- */
+const PARTS=[
+ {k:'Ears',x:0,y:-1,ic:'<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>',t:'It hears me, wherever I am.',x2:'Typed messages and voice notes from my phone, the microphone at my desk, and my inbox, which it watches on its own.',tech:'Telegram · speech recognition on my PC · email watch'},
+ {k:'Voice',x:1,y:-.5,ic:'<path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/>',t:'It answers out loud.',x2:'A calm British butler voice that calls me “sir”. Three sentences at most when spoken, then the full answer in text.',tech:'Speech made on my PC · no cloud voice service'},
+ {k:'Memory',x:1,y:.5,ic:'<circle cx="6" cy="7" r="2.4"/><circle cx="18" cy="8" r="2.4"/><circle cx="11" cy="18" r="2.4"/><path d="M8.2 7.4 15.6 7.8M7 9.2l3 6.6M16.6 10 12.4 16"/>',t:'It remembers, in notes I can read.',x2:'What it learns about me is filed as plain notes in a vault on my PC. It learns only from things I really said, never from its own tests.',tech:'Obsidian vault · linked memory graph · every change undoable'},
+ {k:'Hands',x:0,y:1,ic:'<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>',t:'It does the work.',x2:'It searches the web, writes files, builds whole projects in the background and opens draft pull requests on GitHub for me to accept or reject.',tech:'Background jobs · night shift 11 PM to 7 AM · it never merges'},
+ {k:'Clock',x:-1,y:.5,ic:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>',t:'It is always on.',x2:'Reminders, a morning brief, an evening note, and three pauses a day to think about what is worth telling me. If it crashes, a watchdog restarts it.',tech:'Always-on core process · watchdog · back in under a minute'},
+ {k:'Guard',x:-1,y:-.5,ic:'<path d="M12 2.5 20 5.5v6c0 5-3.4 8.4-8 10-4.6-1.6-8-5-8-10v-6z"/><path d="m8.5 12 2.5 2.5 4.5-5"/>',t:'It has a conscience.',x2:'Every action passes a checkpoint. Money, passwords, messages to other people and deleting my data all need my yes.',tech:'Policy check on every action · one-time approval codes · fails closed'},
+ {k:'Brain',x:0,y:0,brain:1,ic:'<path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6 5.6 18.4"/><circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none"/>',t:'Claude does the thinking.',x2:'Waggle doesn’t try to be a smarter AI. It gives a very smart one a body, and keeps a small local model on my graphics card for chores when Claude is busy.',tech:'Claude · plus a local model for mail and summaries'},
+];
+const ACTS=[
+ {a:'Read a web page',v:'ok',h:'Goes ahead',x:'Reading and searching are free. Waggle doesn’t need me for this.'},
+ {a:'Edit a file in the project',v:'ok',h:'Goes ahead',x:'Inside the project folders it works on its own. Every change is recorded.'},
+ {a:'Email my teacher',v:'ask',h:'Needs my yes',x:'Speaking to another person as me is my decision. Waggle stops and sends me a one-time code that works once, for exactly this.'},
+ {a:'Pay $12 for a domain',v:'ask',h:'Needs my yes',x:'Anything involving money stops and asks. My standing rule for it is $0.'},
+ {a:'Delete old notes',v:'ask',h:'Needs my yes',x:'Deleting my data on its own idea needs approval. If I asked for the delete directly, my instruction is the approval.'},
+ {a:'Switch off its safety checks',v:'never',h:'Never',x:'Refused, with no code to approve. And if its safety files ever change without my sign-off, Waggle refuses every action until I look.'},
+];
+const STEPS=[
+ {k:'Phone',t:'A voice note leaves my phone.',x:'Telegram delivers the audio to a gateway on my PC. The bot only listens to one account: mine.',tech:'Telegram Bot API · Hermes Agent gateway · sender allowlist',m:'1 account',ml:'allowed to talk to it'},
+ {k:'Hook',t:'The gateway hands it straight to the core.',x:'A plug-in hook intercepts the message before the gateway can start its own turn, and posts it to the core on the loopback address with a bearer token.',tech:'POST /turn on 127.0.0.1 · bearer token',m:'5–11 ms',ml:'to admit a message'},
+ {k:'Inbox',t:'It becomes a database row before anything else.',x:'A crash from here on cannot lose the message. One thread per chat keeps a chat’s messages in arrival order.',tech:'SQLite runtime.db, WAL mode · inbox table · dedupe key',m:'5 of 5',ml:'delivered in the first real test, none lost'},
+ {k:'Ears',t:'Speech becomes text on my own PC.',x:'The recogniser gets my project names as a vocabulary hint, then a cleaner strips fillers and false starts. The audio never goes to a cloud service.',tech:'faster-whisper (turbo) · ffmpeg decode · vocabulary prompt',m:'local',ml:'speech recognition'},
+ {k:'Claude',t:'Claude does the thinking.',x:'The chat engine keeps one long-lived Claude Code session per chat and streams its output. A lean launch cut what every reply carries.',tech:'claude -p · stream-json · session rotates at 60k tokens with a local summary',m:'16k',ml:'tokens of fixed context, down from 115k'},
+ {k:'Guard',t:'Every tool call is checked first.',x:'A hook judges each call by its effect. It also hashes the safety files against a manifest kept outside the repo; on a mismatch it refuses everything.',tech:'PreToolUse policy hook · manifest hashes · fails closed',m:'0 of 76',ml:'false asks when my real tool calls were replayed'},
+ {k:'Tools',t:'The tools arrive over MCP.',x:'Vault search, reminders, a safe web reader, GitHub, Google Docs, the desktop. A dozen are always loaded; the rest are found on demand to keep the context small.',tech:'Waggle MCP server · deferred tool loading · untrusted pages reduced to typed fields',m:'12',ml:'tools always loaded'},
+ {k:'Voice',t:'The answer is spoken while it is still being written.',x:'Claude is asked for two parts in one turn: a short spoken line and the full answer. The spoken part is synthesised on my PC as the text streams.',tech:'Kokoro TTS · ffmpeg to Ogg/Opus · 15 s budget, else text only',m:'≤ 45 words',ml:'spoken, then the full text'},
+ {k:'Outbox',t:'Nothing is sent that is not a row first.',x:'A message counts as sent only when Telegram returns its message id. Retries back off, and the same idempotency key never creates a second row.',tech:'outbox table · idempotency keys · at-least-once delivery',m:'2.6 s',ml:'for the first real message through it'},
+];
+
+/* ---------- background honeycomb ---------- */
+(function(){
+  const cv=$('#hive'), g=cv.getContext('2d'); const S=30, cw=S*1.5, ch=S*Math.sqrt(3);
+  let W,H,D,cells=[],grid,last=-9e9; const waves=[];
+  function size(){
+    D=Math.min(devicePixelRatio||1,1.5); W=Math.max(1,innerWidth); H=Math.max(1,innerHeight); cv.width=Math.round(W*D); cv.height=Math.round(H*D); cells=[];
+    for(let c=-1;c*cw<W+S;c++) for(let r=-1;r*ch<H+ch*2;r++) cells.push({x:c*cw,y:r*ch+((c&1)?ch/2:0)});
+    grid=document.createElement('canvas'); grid.width=cv.width; grid.height=Math.round((H+ch*2)*D);
+    const q=grid.getContext('2d'); q.scale(D,D); q.translate(0,ch); q.strokeStyle='rgba(255,96,56,.075)'; q.lineWidth=1; q.beginPath();
+    for(const c of cells){ q.moveTo(c.x+S,c.y); hexPath(q,c.x,c.y,S); } q.stroke();
+  }
+  function tick(t){
+    if(!grid||!grid.width||!grid.height||!cv.width||!cv.height) return;
+    const off=(scrollY*.14)%ch;
+    g.setTransform(1,0,0,1,0,0); g.clearRect(0,0,cv.width,cv.height); g.drawImage(grid,0,Math.round((-ch-off)*D));
+    g.setTransform(D,0,0,D,0,0);
+    if(t-last>2.4){last=t; waves.push({x:Math.random()*W,y:Math.random()*H,t0:t}); if(waves.length>4) waves.shift();}
+    g.lineWidth=1;
+    for(const c of cells){
+      const y=c.y-off; let b=0;
+      const dx=c.x-mx, dy=y-my, d2=dx*dx+dy*dy; if(d2<46000) b+=(1-d2/46000)*.5;
+      for(const w of waves){const age=t-w.t0; if(age>5) continue; const k=Math.abs(Math.hypot(c.x-w.x,y-w.y)-age*190); if(k<34) b+=(1-k/34)*(1-age/5)*.42;}
+      if(b>.03){g.beginPath(); hexPath(g,c.x,y,S-2.5); g.fillStyle='rgba(255,110,60,'+(b*.42).toFixed(3)+')'; g.fill(); g.strokeStyle='rgba(255,150,80,'+Math.min(1,b*1.3).toFixed(3)+')'; g.stroke();}
+    }
+  }
+  sizers.push(size); if(reduce){ sizers.push(()=>tick(0)); } else mods.push(tick);
+})();
+
+/* ---------- orbs ---------- */
+function orb(cv,scale,cyv){
+  const g=cv.getContext('2d'), sec=cv.closest('.scene'); let w,h,d,en=0;
+  function size(){({w,h,d}=fit(cv)); if(reduce) draw(1.7);}
+  function draw(t){
+    const cx=w/2, cy=h*cyv, R=Math.min(w,h)*scale;
+    g.setTransform(d,0,0,d,0,0); g.clearRect(0,0,w,h); g.globalCompositeOperation='lighter';
+    const gl=g.createRadialGradient(cx,cy,0,cx,cy,R*1.9);
+    gl.addColorStop(0,'rgba(255,130,60,'+(.34+en*.2)+')'); gl.addColorStop(.4,'rgba(255,74,38,.13)'); gl.addColorStop(1,'rgba(255,74,38,0)');
+    g.fillStyle=gl; g.fillRect(0,0,w,h);
+    for(let k=0;k<8;k++){
+      const amp=R*(.03+.016*k)*(1+en*1.6), base=R*(.62+k*.075);
+      g.beginPath();
+      for(let i=0;i<=140;i++){const a=i/140*TAU;
+        const r=base+Math.sin(a*3+t*.9+k)*amp+Math.sin(a*5-t*1.25+k*1.7)*amp*.55+Math.sin(a*2+t*.5+k*.6)*amp*.8;
+        const x=cx+Math.cos(a)*r,y=cy+Math.sin(a)*r; i?g.lineTo(x,y):g.moveTo(x,y);}
+      g.closePath();
+      g.strokeStyle=k%3===2?'rgba(255,180,46,'+(.5-k*.045)+')':'rgba(255,84,44,'+(.62-k*.06)+')';
+      g.lineWidth=1.25; g.stroke();
+    }
+    g.globalCompositeOperation='source-over';
+  }
+  sizers.push(size);
+  if(!reduce) mods.push((t,dt)=>{ if(!sec._on) return; const r=cv.getBoundingClientRect();
+    const dist=Math.hypot(mx-(r.left+w/2),my-(r.top+h*cyv)); const tg=clamp(1-dist/(Math.min(w,h)*scale*2.6),0,1);
+    en+=(tg-en)*Math.min(1,dt*4); draw(t); });
+}
+orb($('#orb1'),.27,.47); orb($('#orb2'),.3,.5);
+
+/* ---------- the waggle dance ---------- */
+(function(){
+  const cv=$('#dance'), g=cv.getContext('2d'), sec=cv.closest('.scene'); let w,h,d,u=0; const trail=[], ANG=-.5;
+  function pos(v){
+    const cyc=Math.floor(v), f=v-cyc, side=cyc%2?1:-1, L=Math.min(w,h)*.3; let x,y,wag=0;
+    if(f<.42){const k=f/.42; y=lerp(L,-L,k); x=Math.sin(k*TAU*7)*L*.085; wag=1;}
+    else{const a=(f-.42)/.58*Math.PI; x=side*Math.sin(a)*L*.95; y=-L*Math.cos(a);}
+    const c=Math.cos(ANG), s=Math.sin(ANG);
+    return {x:w/2+(x*c-y*s), y:h/2+(x*s+y*c), wag};
+  }
+  function bee(x,y,a,t){
+    const sc=clamp(Math.min(w,h)/400,.7,1.25), f=Math.abs(Math.sin(t*38));
+    g.save(); g.translate(x,y); g.rotate(a); g.scale(sc,sc);
+    g.fillStyle='rgba(246,234,228,.34)';
+    g.beginPath(); g.ellipse(-2,-9-f*2,9,5+f*2,-.5,0,TAU); g.fill();
+    g.beginPath(); g.ellipse(-2,9+f*2,9,5+f*2,.5,0,TAU); g.fill();
+    g.shadowColor='#ffb42e'; g.shadowBlur=24; g.fillStyle='#ffb42e';
+    g.beginPath(); g.ellipse(0,0,13,7.5,0,0,TAU); g.fill(); g.shadowBlur=0;
+    g.save(); g.clip(); g.fillStyle='#2a0f0a'; g.fillRect(-6,-8,3.6,16); g.fillRect(.5,-8,3.6,16); g.restore();
+    g.fillStyle='#2a0f0a'; g.beginPath(); g.arc(12.5,0,4.6,0,TAU); g.fill();
+    g.restore();
+  }
+  function draw(t){
+    const cx=w/2, cy=h/2, L=Math.min(w,h)*.3, s=Math.sin(ANG), c=Math.cos(ANG);
+    g.setTransform(d,0,0,d,0,0); g.clearRect(0,0,w,h); g.lineCap='round';
+    g.setLineDash([4,8]); g.lineWidth=1; g.strokeStyle='rgba(246,234,228,.3)';
+    g.beginPath(); g.moveTo(cx,cy+L*1.2); g.lineTo(cx,cy-L*1.42); g.stroke();
+    g.strokeStyle='rgba(255,180,46,.42)'; g.setLineDash([]);
+    g.beginPath(); g.moveTo(cx-L*1.2*s,cy+L*1.2*c); g.lineTo(cx+L*1.42*s,cy-L*1.42*c); g.stroke();
+    g.strokeStyle='rgba(255,180,46,.9)'; g.lineWidth=1.5; g.beginPath(); g.arc(cx,cy,L*.5,-Math.PI/2+ANG,-Math.PI/2); g.stroke();
+    const sy=cy-L*1.42-16; g.fillStyle='#ffb42e'; g.strokeStyle='#ffb42e'; g.lineWidth=1.5;
+    g.beginPath(); g.arc(cx,sy,5.5,0,TAU); g.fill();
+    for(let i=0;i<8;i++){const a=i*TAU/8; g.beginPath(); g.moveTo(cx+Math.cos(a)*9,sy+Math.sin(a)*9); g.lineTo(cx+Math.cos(a)*13,sy+Math.sin(a)*13); g.stroke();}
+    g.lineWidth=2.2;
+    for(let i=1;i<trail.length;i++){const a=trail[i-1], b=trail[i], al=i/trail.length;
+      g.strokeStyle=b.wag?'rgba(255,180,46,'+(al*.95)+')':'rgba(255,84,44,'+(al*.7)+')';
+      g.beginPath(); g.moveTo(a.x,a.y); g.lineTo(b.x,b.y); g.stroke();}
+    const p=pos(u), q=pos(u+.004); bee(p.x,p.y,Math.atan2(q.y-p.y,q.x-p.x),t);
+  }
+  /* the trail is kept by distance travelled (1.7 loops), so it looks the same at any frame rate */
+  const N=260, SPAN=1.7;
+  const lay=()=>{trail.length=0; for(let i=0;i<=N;i++) trail.push(pos(Math.max(0,u-SPAN+SPAN*i/N)));};
+  sizers.push(()=>{({w,h,d}=fit(cv)); if(reduce){u=1.9; lay(); draw(0);} });
+  if(!reduce) mods.push((t,dt)=>{ if(!sec._on) return; u+=dt/4.6; lay(); draw(t); });
+})();
+
+/* ---------- the chatbot that waits ---------- */
+function fmt(t){t=((t%24)+24)%24; let hh=Math.floor(t), m=Math.round((t-hh)*60); if(m===60){hh=(hh+1)%24;m=0} return (hh%12||12)+':'+String(m).padStart(2,'0')+' '+(hh<12?'AM':'PM');}
+(function(){
+  const sec=$('#idle').closest('.scene'), items=$$('#missed li'), clock=$('#iclock'), at=[8.67,11.25,15.5,19.08]; let p=0;
+  if(reduce){items.forEach(i=>i.classList.add('gone')); clock.textContent='9:00 PM'; return;}
+  items.forEach(i=>i.classList.add('wait'));
+  mods.push((t,dt)=>{ if(!sec._on) return; p+=dt; const span=12, hold=3.2; if(p>span+hold){p=0; items.forEach(i=>{i.className='wait'});}
+    const h=8+Math.min(1,p/span)*13; clock.textContent=fmt(Math.round(h*12)/12);
+    items.forEach((it,i)=>{ if(h>=at[i]&&it.classList.contains('wait')){it.className='live'; setTimeout(()=>{ if(it.className==='live') it.className='gone'; },1500);} });
+  });
+})();
+
+/* ---------- body + brain ---------- */
+(function(){
+  const comb=$('#comb'), part=$('#part'), sec=comb.closest('.scene'); let cur=-1, touched=false, acc=0;
+  const btns=PARTS.map((p,i)=>{const b=el('button','cellb'+(p.brain?' brain':'')); b.type='button'; b.style.setProperty('--x',p.x); b.style.setProperty('--y',p.y);
+    b.setAttribute('aria-pressed','false'); b.innerHTML='<span><svg viewBox="0 0 24 24" aria-hidden="true">'+p.ic+'</svg>'+p.k+'</span>';
+    b.addEventListener('click',()=>{touched=true; pick(i);}); comb.appendChild(b); return b;});
+  function pick(i){ if(i===cur) return; cur=i; const p=PARTS[i]; btns.forEach((b,j)=>b.setAttribute('aria-pressed',j===i));
+    part.classList.toggle('is-brain',!!p.brain); part.textContent='';
+    const h=el('h3',null,p.t); h.appendChild(el('small',null,p.k)); part.append(h,el('p','say',p.x2),el('p','note',p.tech));
+    part.classList.remove('sw'); void part.offsetWidth; part.classList.add('sw'); }
+  pick(6);
+  if(!reduce) mods.push((t,dt)=>{ if(!sec._on||touched) return; acc+=dt; if(acc>3.6){acc=0; pick((cur+1)%PARTS.length);} });
+})();
+
+/* ---------- judgement funnel ---------- */
+(function(){
+  const cv=$('#funnel'), g=cv.getContext('2d'), sec=cv.closest('.scene'), seenEl=$('#fseen'), saidEl=$('#fsaid');
+  let w,h,d,acc=0,seen=0,said=0,flash=0; const P=[];
+  const pt=(l,u)=>{const y0=(l+.5)/6*h, gx=w*.66, gy=h/2, m=1-u, b1=3*m*m*u, b2=3*m*u*u, b3=u*u*u;
+    return [b1*gx*.45+b2*gx*.62+b3*gx, m*m*m*y0+b1*y0+b2*gy+b3*gy];};
+  const dot=(x,y,r,c)=>{g.fillStyle=c; g.beginPath(); g.arc(x,y,r,0,TAU); g.fill();};
+  function draw(dt){
+    const gx=w*.66, gy=h/2; g.setTransform(d,0,0,d,0,0); g.clearRect(0,0,w,h); g.lineWidth=1; g.strokeStyle='rgba(255,96,56,.2)';
+    for(let l=0;l<6;l++){g.beginPath(); for(let i=0;i<=28;i++){const p=pt(l,i/28); i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]);} g.stroke();}
+    g.strokeStyle='rgba(255,180,46,.3)'; g.beginPath(); g.moveTo(gx,gy); g.lineTo(w,gy); g.stroke();
+    for(let i=P.length-1;i>=0;i--){const p=P[i];
+      if(p.ph===0){p.u+=p.s*dt; if(p.u>=1){p.u=1; p.ph=p.pass?1:2; seen++; if(p.pass){said++; flash=1;}} const q=pt(p.l,p.u); dot(q[0],q[1],2.3,'rgba(255,140,100,.8)');}
+      else if(p.ph===1){p.v+=dt*.8; const x=lerp(gx,w+12,p.v), x0=Math.max(gx,x-54), gr=g.createLinearGradient(x0,gy,x,gy);
+        gr.addColorStop(0,'rgba(255,180,46,0)'); gr.addColorStop(1,'rgba(255,180,46,.95)'); g.strokeStyle=gr; g.lineWidth=3; g.beginPath(); g.moveTo(x0,gy); g.lineTo(x,gy); g.stroke(); g.lineWidth=1;
+        dot(x,gy,4.2,'#ffb42e'); if(p.v>=1) P.splice(i,1);}
+      else{p.v+=dt*2.6; if(p.v>=1){P.splice(i,1); continue;} g.strokeStyle='rgba(255,120,80,'+(.55*(1-p.v))+')'; g.beginPath(); g.arc(gx,gy,22+p.v*16,0,TAU); g.stroke();}
+    }
+    flash=Math.max(0,flash-dt*1.5);
+    g.beginPath(); hexPath(g,gx,gy,19+flash*7); g.fillStyle='#190809'; g.fill();
+    g.strokeStyle=flash>.02?'rgba(255,180,46,'+(.6+flash*.4)+')':'rgba(255,84,44,.85)'; g.lineWidth=1.6; g.stroke(); g.lineWidth=1;
+  }
+  sizers.push(()=>{({w,h,d}=fit(cv)); if(reduce) draw(0);});
+  if(reduce){seenEl.textContent='many'; saidEl.textContent='few'; return;}
+  mods.push((t,dt)=>{ if(!sec._on) return; acc+=dt; while(acc>.17){acc-=.17; P.push({l:Math.floor(Math.random()*6),u:0,s:.3+Math.random()*.17,pass:Math.random()<.08,ph:0,v:0});}
+    draw(dt); seenEl.textContent=seen; saidEl.textContent=said; });
+})();
+
+/* ---------- the guard ---------- */
+(function(){
+  const gate=$('#gate'), acts=$('#acts'), act=$('#gact'), res=$('#gres'), why=$('#gwhy'), box=$('#gcode'), code=$('#gk'); let timer=0;
+  const AB='ABCDEFGHJKMNPQRTUVWXY346789';
+  const btns=ACTS.map((a,i)=>{const b=el('button',null,a.a); b.type='button'; b.setAttribute('aria-pressed','false'); b.addEventListener('click',()=>pick(i,true)); acts.appendChild(b); return b;});
+  function pick(i,anim){ const a=ACTS[i]; clearTimeout(timer); btns.forEach((b,j)=>b.setAttribute('aria-pressed',j===i));
+    const show=()=>{gate.dataset.v=a.v; res.textContent=a.h; why.textContent=a.x; box.hidden=a.v!=='ask';
+      if(a.v==='ask'){let k=''; for(let n=0;n<4;n++) k+=AB[Math.floor(Math.random()*AB.length)]; code.textContent=k;} gate.classList.add('done');};
+    act.textContent=a.a;
+    if(!anim||reduce){show(); return;}
+    gate.classList.remove('done','go'); void gate.offsetWidth; gate.classList.add('go'); timer=setTimeout(show,560); }
+  $('#gyes').addEventListener('click',()=>{gate.dataset.v='ok'; res.textContent='Approved once'; why.textContent='It goes ahead, this one time. The code is used up and cannot be replayed.'; box.hidden=true;});
+  $('#gno').addEventListener('click',()=>{gate.dataset.v='never'; res.textContent='Denied'; why.textContent='Nothing happened, and the refusal is on record.'; box.hidden=true;});
+  pick(0,false);
+})();
+
+/* ---------- how a message travels ---------- */
+(function(){
+  const rail=$('#rail'), stage=$('#stage'), sec=rail.closest('.scene'); let cur=-1, touched=false, acc=0;
+  const btns=STEPS.map((p,i)=>{const b=el('button'); b.type='button'; b.setAttribute('aria-pressed','false'); b.setAttribute('aria-label',(i+1)+'. '+p.k);
+    b.append(el('i',null,String(i+1)),el('span',null,p.k)); b.addEventListener('click',()=>{touched=true; pick(i);}); rail.appendChild(b); return b;});
+  function pick(i){ if(i===cur) return; cur=i; const p=STEPS[i];
+    btns.forEach((b,j)=>{b.classList.toggle('done',j<i); b.setAttribute('aria-pressed',j===i);});
+    const txt=el('div','txt'), h=el('h3',null,p.t); h.appendChild(el('small',null,(i+1)+' · '+p.k));
+    txt.append(h,el('p','say',p.x),el('p','note',p.tech));
+    const met=el('div','met'); met.append(el('b',null,p.m),el('span',null,p.ml));
+    stage.textContent=''; stage.append(txt,met); stage.classList.remove('sw'); void stage.offsetWidth; stage.classList.add('sw'); }
+  pick(0);
+  if(!reduce) mods.push((t,dt)=>{ if(!sec._on||touched) return; acc+=dt; if(acc>4.4){acc=0; pick((cur+1)%STEPS.length);} });
+})();
+
+/* ---------- counters ---------- */
+function count(sec){ if(sec._counted||reduce) return; sec._counted=true;
+  $$('.num',sec).forEach((n,i)=>{const to=+n.dataset.to, dec=+(n.dataset.dec||0), pre=n.dataset.pre||'', suf=n.dataset.suf||''; if(!to) return;
+    const t0=performance.now()+i*90; (function step(now){const k=clamp((now-t0)/1500,0,1), e=1-Math.pow(1-k,4), v=to*e;
+      n.textContent=pre+(dec?v.toFixed(dec):Math.round(v).toLocaleString('en-US'))+suf; if(k<1) requestAnimationFrame(step);})(performance.now());});
+}
+
+/* ---------- scenes, reveal, navigation ---------- */
+const dotsNav=$('#dots'), bar=$('#bar'); let cur=0;
+const go=i=>{i=clamp(i,0,scenes.length-1); scenes[i].scrollIntoView({behavior:reduce?'auto':'smooth',block:'start'});};
+scenes.forEach((s,i)=>{ $$('.rv',s).forEach((e,j)=>e.style.setProperty('--i',j));
+  const b=el('button'); b.type='button'; b.title=s.dataset.name; b.setAttribute('aria-label',s.dataset.name); b.addEventListener('click',()=>go(i)); dotsNav.appendChild(b); });
+const dotBtns=$$('button',dotsNav);
+if('IntersectionObserver' in window){
+  scenes.forEach(s=>{
+    new IntersectionObserver(es=>es.forEach(e=>{s._on=e.isIntersecting;}),{rootMargin:'80px'}).observe(s);
+    new IntersectionObserver((es,o)=>es.forEach(e=>{ if(e.isIntersecting){s.classList.add('in'); if(s.id==='bill') count(s); o.disconnect();} }),{threshold:.14}).observe(s);
+  });
+}else scenes.forEach(s=>{s._on=true; s.classList.add('in');});
+function onScroll(){
+  const max=root.scrollHeight-innerHeight; bar.style.width=(max>0?clamp(scrollY/max,0,1)*100:0)+'%';
+  let c=0; scenes.forEach((s,i)=>{ if(s.getBoundingClientRect().top<=innerHeight*.45) c=i; }); cur=c;
+  dotBtns.forEach((b,i)=>b.setAttribute('aria-current',i===c));
+}
+let sp=false; addEventListener('scroll',()=>{ if(sp) return; sp=true; requestAnimationFrame(()=>{sp=false; onScroll();}); },{passive:true});
+$('#cue').addEventListener('click',()=>go(1));
+addEventListener('keydown',e=>{ if(e.altKey||e.ctrlKey||e.metaKey) return; const tag=e.target.tagName, ctl=/^(INPUT|BUTTON|TEXTAREA|SELECT|A)$/.test(tag); let dir=0;
+  if(e.key==='ArrowRight'||e.key==='PageDown') dir=1; else if(e.key==='ArrowLeft'||e.key==='PageUp') dir=-1; else if(e.key===' '&&!ctl) dir=e.shiftKey?-1:1;
+  if(!dir||(tag==='INPUT'&&e.key.startsWith('Arrow'))) return; e.preventDefault(); go(cur+dir); });
+const mb=$('#motion'); mb.textContent=reduce?'Motion off':'Motion on';
+mb.addEventListener('click',()=>{ try{localStorage.setItem('waggle-motion',reduce?'on':'off'); location.reload();}catch(e){mb.hidden=true;} });
+const pb=$('#present');
+if(!document.fullscreenEnabled) pb.hidden=true;
+pb.addEventListener('click',()=>{ if(document.fullscreenElement) document.exitFullscreen(); else root.requestFullscreen().catch(()=>{pb.hidden=true;}); });
+document.addEventListener('fullscreenchange',()=>{pb.textContent=document.fullscreenElement?'Exit':'Present';});
+
+function sizeAll(){sizers.forEach(f=>f());}
+let rz=0; addEventListener('resize',()=>{clearTimeout(rz); rz=setTimeout(()=>{sizeAll(); onScroll();},120);});
+sizeAll(); onScroll();
+if(document.fonts&&document.fonts.ready) document.fonts.ready.then(sizeAll);
+let lastT=0; requestAnimationFrame(function loop(ts){const t=ts/1000, dt=Math.min(.05,Math.max(0,t-lastT)); lastT=t; for(const m of mods){ try{m(t,dt);}catch(e){} } requestAnimationFrame(loop);});
+})();
+</script>
+
+</body>
+</html>
