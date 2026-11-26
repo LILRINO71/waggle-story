@@ -22,3 +22,7 @@ python build.py
 Everything on the page is taken from Waggle's own repository (`README.md`, `docs/STATUS.md`, git history) and its
 runtime records. The API-price figure is an estimate: token counts from saved Claude Code session logs, priced at
 Anthropic's list API rates in November 2026. The work itself ran on a flat-rate subscription.
+
+`tools/api_cost_estimate.py` is the script behind the figure: it reads the Claude Code session logs on the PC it runs
+on (read-only), removes duplicate copies of each model reply, prices the tokens, and counts a stretch of a session as
+Waggle work when that hour of the log talks about Waggle heavily.
